@@ -1,10 +1,11 @@
 from flask import Flask, request, jsonify
 import pyrebase
 import os
+import sys
 
 app = Flask(__name__)
 
-# 🌟 ใส่ Firebase Config ตรงนี้ให้ครบนะครับ
+# 🌟 ใส่ Firebase Config ของบอสตรงนี้
 firebaseConfig = {
     "apiKey": "AIzaSyDgM6eehnIpIFZ20ZJdvoIvrQEmGklareM",
     "authDomain": "vmax-titan-5d42d.firebaseapp.com",
@@ -28,53 +29,39 @@ PKG_COINS = {
 @app.route('/plisio-webhook', methods=['POST', 'GET'])
 def plisio_webhook():
     try:
-        # 🌟 FIX: ดูดข้อมูลทุกรูปแบบ ไม่ว่า Plisio จะส่งแบบไหนมา
         data = request.get_json(silent=True) or request.form.to_dict() or request.args.to_dict()
         
-        print("\n===================================")
-        print("🚨 INCOMING WEBHOOK FROM PLISIO 🚨")
-        print(f"RAW DATA: {data}")
-        print("===================================\n")
+        # 🌟 flush=True บังคับให้ Render โชว์ข้อความนี้ในกล่องดำทันที!
+        print(f"\n[🚨 WEBHOOK TRIGGERED] Data: {data}\n", flush=True)
 
         if not data:
-            return jsonify({"error": "No data received"}), 400
+            return jsonify({"error": "No data"}), 400
 
         status = data.get('status')
-        
+        order_number = data.get('order_number', '')
+
         if status in ['completed', 'mismatch']:
-            order_number = data.get('order_number', '')
-            print(f"✅ ตรวจพบการชำระเงินสำเร็จ! Order: {order_number}")
-            
+            print(f"[✅ PAYMENT COMPLETED] Order: {order_number}", flush=True)
             parts = order_number.split('_')
+            
             if len(parts) >= 3:
                 uid = parts[0]
                 pkg_type = f"{parts[1]}_{parts[2]}" 
-                
                 coins_to_add = PKG_COINS.get(pkg_type, 0)
                 
                 if coins_to_add > 0:
-                    print(f"⏳ กำลังดึงข้อมูล Firebase เพื่อเติม {coins_to_add} เหรียญ ให้ UID: {uid}...")
                     user_ref = db.child("users").child(uid)
-                    current_data = user_ref.get().val()
-                    
-                    if current_data:
-                        current_coins = current_data.get("coins", 0)
-                        new_coins = current_coins + coins_to_add
-                        user_ref.update({"coins": new_coins})
-                        print(f"🎉 SUCCESS: เติมเหรียญเรียบร้อย! ยอดใหม่คือ: {new_coins} V.Coins")
-                    else:
-                        print(f"❌ ERROR: ไม่พบ UID {uid} ในระบบ Firebase!")
+                    current_coins = user_ref.get().val().get("coins", 0) if user_ref.get().val() else 0
+                    user_ref.update({"coins": current_coins + coins_to_add})
+                    print(f"[🎉 SUCCESS] บวก {coins_to_add} เหรียญ ให้ {uid} | ยอดใหม่: {current_coins + coins_to_add}", flush=True)
                 else:
-                    print(f"❌ ERROR: ไม่รู้จักแพ็กเกจ {pkg_type}!")
-            else:
-                print(f"❌ ERROR: รูปแบบ Order Number พัง ({order_number})")
+                    print(f"[❌ ERROR] ไม่รู้จักแพ็กเกจ {pkg_type}", flush=True)
         else:
-            print(f"⚠️ บิลยังไม่สมบูรณ์ สถานะตอนนี้คือ: {status}")
+            print(f"[⚠️ PENDING/OTHER] Status: {status} | Order: {order_number}", flush=True)
 
         return jsonify({"status": "received"}), 200
-
     except Exception as e:
-        print(f"🔥 FATAL ERROR ข้อมูลพังตอนอัปเดต: {e}")
+        print(f"[🔥 FATAL ERROR] ระบบพัง: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/', methods=['GET'])
