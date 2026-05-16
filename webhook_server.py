@@ -4,7 +4,7 @@ import os
 
 app = Flask(__name__)
 
-# 🌟 ใส่ Firebase Config ของบอสตรงนี้ให้ครบนะครับ
+# 🌟 ใส่ Firebase Config ตรงนี้ให้ครบนะครับ
 firebaseConfig = {
     "apiKey": "AIzaSyDgM6eehnIpIFZ20ZJdvoIvrQEmGklareM",
     "authDomain": "vmax-titan-5d42d.firebaseapp.com",
