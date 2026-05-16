@@ -1,11 +1,10 @@
-# ชื่อไฟล์: webhook_server.py
 from flask import Flask, request, jsonify
 import pyrebase
 import os
 
 app = Flask(__name__)
 
-# 🌟 ใส่ Firebase Config ของบอสตรงนี้
+# 🌟 ใส่ Firebase Config ของบอสให้ครบถ้วนนะครับ
 firebaseConfig = {
     "apiKey": "AIzaSyDgM6eehnIpIFZ20ZJdvoIvrQEmGklareM",
     "authDomain": "vmax-titan-5d42d.firebaseapp.com",
@@ -19,7 +18,6 @@ firebaseConfig = {
 firebase = pyrebase.initialize_app(firebaseConfig)
 db = firebase.database()
 
-# 🌟 จำนวนเหรียญที่จะบวกให้ตามแพ็กเกจ (ตั้งให้ตรงกับโปรแกรมหลัก)
 PKG_COINS = {
     "1_DAY": 150,
     "7_DAYS": 1200,
@@ -29,26 +27,27 @@ PKG_COINS = {
 
 @app.route('/plisio-webhook', methods=['POST'])
 def plisio_webhook():
-    data = request.json
+    # 🌟 FIX: สั่งให้รองรับทั้ง JSON และ Form Data จาก Plisio
+    data = request.json or request.form.to_dict()
+    
     if not data:
+        print("❌ Webhook Error: ไม่พบข้อมูลส่งมา")
         return "No data", 400
 
-    # 1. เช็คว่าลูกค้าโอนเงินเสร็จสมบูรณ์หรือยัง (status = completed หรือ mismatch กรณีโอนเกิน/ขาดนิดหน่อย)
+    print("🔔 มีข้อความเข้าจาก Plisio! Status:", data.get('status'))
+
     status = data.get('status')
     if status in ['completed', 'mismatch']:
-        
-        # 2. แกะรหัส order_number (เช่น UID_7_DAYS_1710000000)
         order_number = data.get('order_number', '')
         parts = order_number.split('_')
         
         if len(parts) >= 3:
             uid = parts[0]
-            pkg_type = f"{parts[1]}_{parts[2]}" # จะได้คำว่า "7_DAYS"
+            pkg_type = f"{parts[1]}_{parts[2]}" 
             
             coins_to_add = PKG_COINS.get(pkg_type, 0)
             
             if coins_to_add > 0:
-                # 3. บวกเหรียญเข้า Firebase อัตโนมัติ!
                 user_ref = db.child("users").child(uid)
                 current_data = user_ref.get().val()
                 
@@ -56,7 +55,7 @@ def plisio_webhook():
                     current_coins = current_data.get("coins", 0)
                     new_coins = current_coins + coins_to_add
                     user_ref.update({"coins": new_coins})
-                    print(f"✅ SUCCESS: Added {coins_to_add} coins to UID: {uid}")
+                    print(f"✅ SUCCESS: เติม {coins_to_add} เหรียญ ให้ UID: {uid} เรียบร้อย!")
                     
     return jsonify({"status": "received"}), 200
 
