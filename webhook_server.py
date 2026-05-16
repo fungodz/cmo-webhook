@@ -5,7 +5,7 @@ import sys
 
 app = Flask(__name__)
 
-# 🌟 ใส่ Firebase Config ของบอสตรงนี้
+# 🌟 Firebase Config ของบอส
 firebaseConfig = {
     "apiKey": "AIzaSyDgM6eehnIpIFZ20ZJdvoIvrQEmGklareM",
     "authDomain": "vmax-titan-5d42d.firebaseapp.com",
@@ -31,7 +31,6 @@ def plisio_webhook():
     try:
         data = request.get_json(silent=True) or request.form.to_dict() or request.args.to_dict()
         
-        # 🌟 flush=True บังคับให้ Render โชว์ข้อความนี้ในกล่องดำทันที!
         print(f"\n[🚨 WEBHOOK TRIGGERED] Data: {data}\n", flush=True)
 
         if not data:
@@ -49,20 +48,19 @@ def plisio_webhook():
                 pkg_type = f"{parts[1]}_{parts[2]}" 
                 coins_to_add = PKG_COINS.get(pkg_type, 0)
                 
-               if coins_to_add > 0:
-                    # 1. ดึงข้อมูลเหรียญปัจจุบันของยูสเซอร์นั้น (ล็อกเป้า UID)
+                if coins_to_add > 0:
+                    # 🌟 ระบบล็อกเป้าหมาย ยิงเหรียญเข้ายูสเซอร์ตรงๆ ไม่ตกหล่นที่หน้าบ้าน
                     current_data = db.child("users").child(uid).get().val()
                     current_coins = current_data.get("coins", 0) if current_data else 0
-                    
-                    # 2. คำนวณยอดใหม่
                     new_coins = current_coins + coins_to_add
                     
-                    # 🌟 3. จุดตายอยู่บรรทัดนี้ครับ! ต้องใช้ db.child().child() ยิงตรงๆ บังคับให้อัปเดตเฉพาะโฟลเดอร์ UID นั้นเท่านั้น!
                     db.child("users").child(uid).update({"coins": new_coins})
                     
                     print(f"[🎉 SUCCESS] บวก {coins_to_add} เหรียญ ให้ {uid} | ยอดใหม่: {new_coins}", flush=True)
                 else:
                     print(f"[❌ ERROR] ไม่รู้จักแพ็กเกจ {pkg_type}", flush=True)
+            else:
+                print(f"[❌ ERROR] โครงสร้าง Order พัง: {order_number}", flush=True)
         else:
             print(f"[⚠️ PENDING/OTHER] Status: {status} | Order: {order_number}", flush=True)
 
