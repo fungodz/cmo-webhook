@@ -55,6 +55,16 @@ def plisio_webhook():
                     new_coins = current_coins + coins_to_add
                     
                     db.child("users").child(uid).update({"coins": new_coins})
+
+                    import datetime
+                    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    tx_data = {
+                        "uid": uid,
+                        "package": pkg_type,
+                        "coins_added": coins_to_add,
+                        "timestamp": now_str
+                    }
+                    db.child("transactions").push(tx_data) # ดันข้อมูลลงโฟลเดอร์ประวัติ
                     
                     print(f"[🎉 SUCCESS] บวก {coins_to_add} เหรียญ ให้ {uid} | ยอดใหม่: {new_coins}", flush=True)
                 else:
